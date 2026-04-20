@@ -405,13 +405,40 @@
                     <line x1="12" y1="16" x2="12" y2="12"/>
                     <line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
-                <span>Configura servidores para streaming local y remoto de camaras.</span>
+                <span>Configura servidores REMOTOS para streaming de camaras desde cualquier lugar.</span>
             </div>
             <form id="webrtc-settings-form" onsubmit="event.preventDefault(); saveWebRTCSettings();">
+                <div class="info-box info-highlight" style="margin-bottom: 16px;">
+                    <strong>Conexion Remota Automatica</strong>
+                    <p>El sistema detecta automaticamente tu direccion IP/host actual para conectar al servidor WebSocket de camaras.</p>
+                    <p style="margin-top: 8px;"><strong>URL detectada:</strong> <code id="auto-detected-url" style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">--</code></p>
+                </div>
+                
                 <div class="form-group">
-                    <label for="signaling-server-url">Servidor de Senalizacion (WebSocket)</label>
-                    <input type="text" id="signaling-server-url" placeholder="ws://localhost:8080" value="ws://localhost:8080">
-                    <small class="form-hint">Para streaming local RTSP via WebSocket</small>
+                    <label for="ws-port">Puerto del Servidor WebSocket</label>
+                    <input type="number" id="ws-port" value="8080" min="1" max="65535" oninput="updateAutoDetectedURL()">
+                    <small class="form-hint">Puerto donde corre tu servidor de streaming (por defecto: 8080)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signaling-server-url">URL del Servidor WebSocket</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="signaling-server-url" placeholder="wss://mi-servidor.com:8080" style="flex: 1;">
+                        <button type="button" class="btn btn-secondary" onclick="useAutoDetectedURL()" style="white-space: nowrap;">
+                            Usar Auto-detectada
+                        </button>
+                    </div>
+                    <small class="form-hint">Usa el boton para aplicar automaticamente la URL detectada, o ingresa una URL personalizada (DDNS, VPS, etc.)</small>
+                </div>
+                
+                <div class="info-box" style="margin-bottom: 16px;">
+                    <strong>Opciones para Acceso Remoto:</strong>
+                    <ul style="margin: 8px 0; padding-left: 20px; font-size: 0.85rem;">
+                        <li><strong>Red Local:</strong> Usa la URL auto-detectada si estas en la misma red</li>
+                        <li><strong>DDNS + Port Forwarding:</strong> Configura No-IP, DuckDNS o DynDNS y abre el puerto en tu router</li>
+                        <li><strong>VPS:</strong> Usa la IP publica o dominio de tu VPS</li>
+                        <li><strong>Ngrok/Cloudflare Tunnel:</strong> Para exponer sin abrir puertos</li>
+                    </ul>
                 </div>
                 
                 <div class="info-box info-highlight">
