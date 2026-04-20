@@ -7,7 +7,7 @@
 // ===========================
 // CONFIGURACIÓN SUPABASE
 // ===========================
-const SUPABASE_URL = "https://xwzbizqfsgvboetswrqj.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://xwzbizqfsgvboetswrqj.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3emJpenFmc2d2Ym9ldHN3cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODEwODksImV4cCI6MjA5MjI1NzA4OX0.lkailidmZXDPimqf6zWX273rrcas_0Uy7vgloAnR_sc";
 
 const TABLE_MAP = {
