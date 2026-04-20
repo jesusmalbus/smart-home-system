@@ -405,13 +405,22 @@
                     <line x1="12" y1="16" x2="12" y2="12"/>
                     <line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
-                <span>Configura servidores para streaming local y remoto de camaras.</span>
+                <span>Configura servidores REMOTOS para streaming de camaras desde cualquier lugar.</span>
             </div>
             <form id="webrtc-settings-form" onsubmit="event.preventDefault(); saveWebRTCSettings();">
+                <div class="info-box info-highlight" style="margin-bottom: 16px;">
+                    <strong>Conexion Remota (No localhost)</strong>
+                    <p>Para acceso remoto necesitas un servidor de streaming accesible desde Internet. Opciones:</p>
+                    <ul style="margin: 8px 0; padding-left: 20px; font-size: 0.85rem;">
+                        <li><strong>VPS con servidor WebSocket:</strong> Configura un servidor en tu VPS con IP publica</li>
+                        <li><strong>DDNS + Port Forwarding:</strong> Usa servicios como No-IP, DuckDNS o DynDNS</li>
+                        <li><strong>Ngrok/Cloudflare Tunnel:</strong> Exponer servidor local via tunel seguro</li>
+                    </ul>
+                </div>
                 <div class="form-group">
-                    <label for="signaling-server-url">Servidor de Senalizacion (WebSocket)</label>
-                    <input type="text" id="signaling-server-url" placeholder="ws://localhost:8080" value="ws://localhost:8080">
-                    <small class="form-hint">Para streaming local RTSP via WebSocket</small>
+                    <label for="signaling-server-url">Servidor de Streaming Remoto (WebSocket)</label>
+                    <input type="text" id="signaling-server-url" placeholder="wss://mi-servidor.com:8080">
+                    <small class="form-hint">URL del servidor remoto. Ejemplos: wss://mi-vps.com:8080, ws://mihogar.ddns.net:8080</small>
                 </div>
                 
                 <div class="info-box info-highlight">
