@@ -68,11 +68,25 @@ function loadTURNConfig() {
 }
 
 // Servidor de Streaming RTSP URL (configurable)
-let SIGNALING_SERVER_URL = localStorage.getItem("webrtc-signaling-server") || "ws://localhost:8080";
+// NO usar localhost por defecto - solo conectar si el usuario configura un servidor
+let SIGNALING_SERVER_URL = localStorage.getItem("webrtc-signaling-server") || null;
+
+// Funcion para generar URL de WebSocket basada en el host actual
+function getAutoWebSocketURL(port = 8080) {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.hostname;
+  return `${protocol}//${host}:${port}`;
+}
+
+// Puerto del servidor WebSocket (configurable)
+let WS_PORT = parseInt(localStorage.getItem("webrtc-ws-port")) || 8080;
 
 // WebSocket connection para streaming
 let streamingSocket = null;
 let streamingConnected = false;
+
+// Flag para evitar reintentos automaticos si no hay servidor configurado
+let signalingServerConfigured = !!SIGNALING_SERVER_URL;
 
 // Cache de frames para cada cámara
 const frameCache = new Map();
@@ -1093,21 +1107,40 @@ document.addEventListener("keydown", (e) => {
 
 /**
  * Inicializa la conexion WebSocket para streaming RTSP
+ * Solo se conecta si hay un servidor configurado (no localhost por defecto)
  */
 function initSignalingConnection() {
+  // No intentar conectar si no hay servidor configurado
+  if (!SIGNALING_SERVER_URL || !signalingServerConfigured) {
+    console.log("[Streaming] No hay servidor de streaming configurado. Configure uno en Ajustes WebRTC.");
+    updateWebRTCStatus(false, "No configurado");
+    return;
+  }
+
   if (streamingSocket && streamingSocket.readyState === WebSocket.OPEN) {
     return;
   }
 
-  console.log("[Streaming] Conectando a:", SIGNALING_SERVER_URL);
+  // Validar que la URL no sea localhost (a menos que se haya configurado explicitamente)
+  if (SIGNALING_SERVER_URL.includes("localhost") || SIGNALING_SERVER_URL.includes("127.0.0.1")) {
+    const savedUrl = localStorage.getItem("webrtc-signaling-server");
+    if (!savedUrl) {
+      console.log("[Streaming] Servidor localhost detectado pero no configurado explicitamente. Configure un servidor remoto.");
+      updateWebRTCStatus(false, "Configure servidor remoto");
+      return;
+    }
+  }
+
+  console.log("[Streaming] Conectando a servidor remoto:", SIGNALING_SERVER_URL);
 
   try {
     streamingSocket = new WebSocket(SIGNALING_SERVER_URL);
 
     streamingSocket.onopen = () => {
-      console.log("[Streaming] Conectado al servidor RTSP");
+      console.log("[Streaming] Conectado al servidor RTSP remoto");
       streamingConnected = true;
-      updateWebRTCStatus(true);
+      updateWebRTCStatus(true, "Conectado");
+      showToast("Conectado al servidor de streaming", "success");
 
       // Re-suscribirse a camaras activas
       streamingCanvases.forEach((canvas, cameraId) => {
@@ -1118,15 +1151,17 @@ function initSignalingConnection() {
     streamingSocket.onclose = () => {
       console.log("[Streaming] Desconectado del servidor");
       streamingConnected = false;
-      updateWebRTCStatus(false);
-      // Reconectar despues de 5 segundos
-      setTimeout(initSignalingConnection, 5000);
+      updateWebRTCStatus(false, "Desconectado");
+      // Reconectar despues de 10 segundos solo si hay servidor configurado
+      if (signalingServerConfigured && SIGNALING_SERVER_URL) {
+        setTimeout(initSignalingConnection, 10000);
+      }
     };
 
     streamingSocket.onerror = (error) => {
       console.error("[Streaming] Error de conexion:", error);
       streamingConnected = false;
-      updateWebRTCStatus(false);
+      updateWebRTCStatus(false, "Error de conexion");
     };
 
     streamingSocket.onmessage = (event) => {
@@ -1139,7 +1174,7 @@ function initSignalingConnection() {
     };
   } catch (e) {
     console.error("[Streaming] Error creando WebSocket:", e);
-    updateWebRTCStatus(false);
+    updateWebRTCStatus(false, "Error");
   }
 }
 
@@ -1272,11 +1307,15 @@ function stopRTSPStreaming(cameraId) {
 /**
  * Actualiza el estado de conexion en la UI
  */
-function updateWebRTCStatus(connected) {
+function updateWebRTCStatus(connected, message = null) {
   const statusEl = document.getElementById("webrtc-status");
   if (statusEl) {
     statusEl.className = connected ? "webrtc-status connected" : "webrtc-status disconnected";
-    statusEl.textContent = connected ? "Servidor Activo" : "Servidor Desconectado";
+    if (message) {
+      statusEl.textContent = message;
+    } else {
+      statusEl.textContent = connected ? "Servidor Activo" : "Servidor Desconectado";
+    }
   }
 }
 
@@ -1413,10 +1452,35 @@ function showCameraError(cameraId, message) {
 }
 
 /**
- * Configura el servidor de senalizacion
+ * Configura el servidor de senalizacion (remoto)
+ * @param {string} url - URL del servidor WebSocket (ej: wss://mi-servidor.com:8080)
  */
 function setSignalingServer(url) {
+  if (!url || url.trim() === "") {
+    console.log("[Streaming] URL vacia, deshabilitando servidor de streaming");
+    SIGNALING_SERVER_URL = null;
+    signalingServerConfigured = false;
+    localStorage.removeItem("webrtc-signaling-server");
+    if (streamingSocket) {
+      streamingSocket.close();
+    }
+    updateWebRTCStatus(false, "No configurado");
+    return;
+  }
+
+  // Validar formato de URL WebSocket
+  if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
+    showToast("La URL debe comenzar con ws:// o wss://", "error");
+    return;
+  }
+
   SIGNALING_SERVER_URL = url;
+  signalingServerConfigured = true;
+  localStorage.setItem("webrtc-signaling-server", url);
+  
+  console.log("[Streaming] Servidor configurado:", url);
+  showToast("Servidor de streaming configurado", "success");
+  
   if (streamingSocket) {
     streamingSocket.close();
   }
@@ -1437,13 +1501,30 @@ async function getAvailableCameras() {
 }
 
 /**
- * Abre modal para configurar servidor WebRTC
+ * Abre modal para configurar servidor WebRTC (remoto)
  */
 function openWebRTCSettings() {
   document.getElementById("webrtc-settings-modal").classList.remove("hidden");
-  document.getElementById("signaling-server-url").value = SIGNALING_SERVER_URL;
+  document.getElementById("signaling-server-url").value = SIGNALING_SERVER_URL || "";
+  
+  // Mostrar placeholder con ejemplo de URL remota usando el host actual
+  const serverInput = document.getElementById("signaling-server-url");
+  const autoUrl = getAutoWebSocketURL(WS_PORT);
+  serverInput.placeholder = autoUrl;
+  
+  // Configurar puerto
+  const portInput = document.getElementById("ws-port");
+  if (portInput) {
+    portInput.value = WS_PORT;
+  }
+  
+  // Mostrar URL detectada automaticamente
+  const autoUrlDisplay = document.getElementById("auto-detected-url");
+  if (autoUrlDisplay) {
+    autoUrlDisplay.textContent = autoUrl;
+  }
 
-  // Cargar configuración TURN
+  // Cargar configuracion TURN
   document.getElementById("turn-server-url").value = localStorage.getItem("turn-server-url") || "";
   document.getElementById("turn-username").value = localStorage.getItem("turn-username") || "";
   document.getElementById("turn-password").value = localStorage.getItem("turn-password") || "";
@@ -1453,14 +1534,45 @@ function closeWebRTCSettings() {
   document.getElementById("webrtc-settings-modal").classList.add("hidden");
 }
 
+/**
+ * Usa automaticamente la URL detectada del host actual
+ */
+function useAutoDetectedURL() {
+  const portInput = document.getElementById("ws-port");
+  const port = portInput ? parseInt(portInput.value) || 8080 : WS_PORT;
+  const autoUrl = getAutoWebSocketURL(port);
+  document.getElementById("signaling-server-url").value = autoUrl;
+  showToast("URL auto-detectada aplicada: " + autoUrl, "success");
+}
+
+/**
+ * Actualiza la URL mostrada cuando cambia el puerto
+ */
+function updateAutoDetectedURL() {
+  const portInput = document.getElementById("ws-port");
+  const port = portInput ? parseInt(portInput.value) || 8080 : 8080;
+  const autoUrl = getAutoWebSocketURL(port);
+  const autoUrlDisplay = document.getElementById("auto-detected-url");
+  if (autoUrlDisplay) {
+    autoUrlDisplay.textContent = autoUrl;
+  }
+}
+
 function saveWebRTCSettings() {
   const url = document.getElementById("signaling-server-url").value.trim();
-  if (url) {
-    setSignalingServer(url);
-    localStorage.setItem("webrtc-signaling-server", url);
+  
+  // Guardar puerto configurado
+  const portInput = document.getElementById("ws-port");
+  if (portInput) {
+    const port = parseInt(portInput.value) || 8080;
+    WS_PORT = port;
+    localStorage.setItem("webrtc-ws-port", port.toString());
   }
+  
+  // setSignalingServer ya maneja la validacion y guardado en localStorage
+  setSignalingServer(url);
 
-  // Guardar configuración TURN
+  // Guardar configuracion TURN
   const turnUrl = document.getElementById("turn-server-url").value.trim();
   const turnUser = document.getElementById("turn-username").value.trim();
   const turnPass = document.getElementById("turn-password").value.trim();
