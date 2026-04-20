@@ -71,6 +71,16 @@ function loadTURNConfig() {
 // NO usar localhost por defecto - solo conectar si el usuario configura un servidor
 let SIGNALING_SERVER_URL = localStorage.getItem("webrtc-signaling-server") || null;
 
+// Funcion para generar URL de WebSocket basada en el host actual
+function getAutoWebSocketURL(port = 8080) {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.hostname;
+  return `${protocol}//${host}:${port}`;
+}
+
+// Puerto del servidor WebSocket (configurable)
+let WS_PORT = parseInt(localStorage.getItem("webrtc-ws-port")) || 8080;
+
 // WebSocket connection para streaming
 let streamingSocket = null;
 let streamingConnected = false;
@@ -1497,9 +1507,22 @@ function openWebRTCSettings() {
   document.getElementById("webrtc-settings-modal").classList.remove("hidden");
   document.getElementById("signaling-server-url").value = SIGNALING_SERVER_URL || "";
   
-  // Mostrar placeholder con ejemplo de URL remota
+  // Mostrar placeholder con ejemplo de URL remota usando el host actual
   const serverInput = document.getElementById("signaling-server-url");
-  serverInput.placeholder = "wss://mi-servidor.com:8080 o ws://IP_PUBLICA:8080";
+  const autoUrl = getAutoWebSocketURL(WS_PORT);
+  serverInput.placeholder = autoUrl;
+  
+  // Configurar puerto
+  const portInput = document.getElementById("ws-port");
+  if (portInput) {
+    portInput.value = WS_PORT;
+  }
+  
+  // Mostrar URL detectada automaticamente
+  const autoUrlDisplay = document.getElementById("auto-detected-url");
+  if (autoUrlDisplay) {
+    autoUrlDisplay.textContent = autoUrl;
+  }
 
   // Cargar configuracion TURN
   document.getElementById("turn-server-url").value = localStorage.getItem("turn-server-url") || "";
@@ -1511,8 +1534,40 @@ function closeWebRTCSettings() {
   document.getElementById("webrtc-settings-modal").classList.add("hidden");
 }
 
+/**
+ * Usa automaticamente la URL detectada del host actual
+ */
+function useAutoDetectedURL() {
+  const portInput = document.getElementById("ws-port");
+  const port = portInput ? parseInt(portInput.value) || 8080 : WS_PORT;
+  const autoUrl = getAutoWebSocketURL(port);
+  document.getElementById("signaling-server-url").value = autoUrl;
+  showToast("URL auto-detectada aplicada: " + autoUrl, "success");
+}
+
+/**
+ * Actualiza la URL mostrada cuando cambia el puerto
+ */
+function updateAutoDetectedURL() {
+  const portInput = document.getElementById("ws-port");
+  const port = portInput ? parseInt(portInput.value) || 8080 : 8080;
+  const autoUrl = getAutoWebSocketURL(port);
+  const autoUrlDisplay = document.getElementById("auto-detected-url");
+  if (autoUrlDisplay) {
+    autoUrlDisplay.textContent = autoUrl;
+  }
+}
+
 function saveWebRTCSettings() {
   const url = document.getElementById("signaling-server-url").value.trim();
+  
+  // Guardar puerto configurado
+  const portInput = document.getElementById("ws-port");
+  if (portInput) {
+    const port = parseInt(portInput.value) || 8080;
+    WS_PORT = port;
+    localStorage.setItem("webrtc-ws-port", port.toString());
+  }
   
   // setSignalingServer ya maneja la validacion y guardado en localStorage
   setSignalingServer(url);
