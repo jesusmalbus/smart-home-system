@@ -7,7 +7,7 @@
 // ===========================
 // CONFIGURACIÓN SUPABASE
 // ===========================
-const SUPABASE_URL = "https://xwzbizqfsgvboetswrqj.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://xwzbizqfsgvboetswrqj.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3emJpenFmc2d2Ym9ldHN3cnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODEwODksImV4cCI6MjA5MjI1NzA4OX0.lkailidmZXDPimqf6zWX273rrcas_0Uy7vgloAnR_sc";
 
 const TABLE_MAP = {
@@ -1477,10 +1477,10 @@ function setSignalingServer(url) {
   SIGNALING_SERVER_URL = url;
   signalingServerConfigured = true;
   localStorage.setItem("webrtc-signaling-server", url);
-  
+
   console.log("[Streaming] Servidor configurado:", url);
   showToast("Servidor de streaming configurado", "success");
-  
+
   if (streamingSocket) {
     streamingSocket.close();
   }
@@ -1506,18 +1506,18 @@ async function getAvailableCameras() {
 function openWebRTCSettings() {
   document.getElementById("webrtc-settings-modal").classList.remove("hidden");
   document.getElementById("signaling-server-url").value = SIGNALING_SERVER_URL || "";
-  
+
   // Mostrar placeholder con ejemplo de URL remota usando el host actual
   const serverInput = document.getElementById("signaling-server-url");
   const autoUrl = getAutoWebSocketURL(WS_PORT);
   serverInput.placeholder = autoUrl;
-  
+
   // Configurar puerto
   const portInput = document.getElementById("ws-port");
   if (portInput) {
     portInput.value = WS_PORT;
   }
-  
+
   // Mostrar URL detectada automaticamente
   const autoUrlDisplay = document.getElementById("auto-detected-url");
   if (autoUrlDisplay) {
@@ -1560,7 +1560,7 @@ function updateAutoDetectedURL() {
 
 function saveWebRTCSettings() {
   const url = document.getElementById("signaling-server-url").value.trim();
-  
+
   // Guardar puerto configurado
   const portInput = document.getElementById("ws-port");
   if (portInput) {
@@ -1568,7 +1568,7 @@ function saveWebRTCSettings() {
     WS_PORT = port;
     localStorage.setItem("webrtc-ws-port", port.toString());
   }
-  
+
   // setSignalingServer ya maneja la validacion y guardado en localStorage
   setSignalingServer(url);
 
